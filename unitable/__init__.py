@@ -89,11 +89,11 @@ def read_fwf(filename, **kwargs):
 import_delimited = read_csv
 
 def write_csv(filename, index=False, **kwargs):
-    _df.to_csv(filename, **kwargs)
+    _df.to_csv(filename, float_format="%g", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 def write_tsv(filename, index=False, **kwargs):
-    _df.to_csv(filename, delimiter="\t", **kwargs)
+    _df.to_csv(filename, float_format="%g", sep="\t", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 export_delimited = write_csv
