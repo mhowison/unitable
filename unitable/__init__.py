@@ -125,6 +125,20 @@ def rename(variable, name):
 def list_if(condition):
     return _df[condition]
 
+def keep_if(condition):
+    global _df
+    n = len(_df)
+    _df = _df.loc[condition, :]
+    print("kept", len(_df), "of", n, "observations")
+
+filter = keep_if
+
+def drop_if(condition):
+    global _df
+    n = len(_df)
+    _df = _df.loc[~condition, :]
+    print("dropped", len(_df), "of", n, "observations")
+
 def keep(*variables):
     global _df
     kept = [variable.name for variable in variables]
