@@ -1,6 +1,6 @@
 # Re-exported imports
 import pandas as pd
-from numpy import nan
+from numpy import nan, where
 
 # Hidden imports
 import builtins as _builtins
