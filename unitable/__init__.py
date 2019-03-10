@@ -41,7 +41,6 @@ def _drop(name):
     _locals = _stack()[2][0].f_locals
     if name in _locals and name in _df.columns:
         _locals.pop(name)
-        del _df[name]
     else:
         raise ValueError("cannot drop variable '{}' because it is not currently loaded".format(name))
 
@@ -107,16 +106,20 @@ def generate(name, value):
 
 def replace(variable, value):
     global _df
+    _drop(variable.name)
     _df.loc[:, variable.name] = value
+    _generate(variable.name)
 
 def drop(variable):
     global _df
+    del _df[variable.name]
     _drop(variable.name)
 
 def rename(variable, name):
     global _df
     if not variable.name == name:
-        _df[name, :] = variable
+        _df[:, name] = variable
+        del _df[variable.name]
         _drop(variable.name)
         _generate(name)
 
@@ -128,7 +131,9 @@ def list_if(condition):
 def keep_if(condition):
     global _df
     n = len(_df)
+    for name in _df.columns: _drop(name)
     _df = _df.loc[condition, :]
+    for name in _df.columns: _generate(name)
     print("kept", len(_df), "of", n, "observations")
 
 filter = keep_if
@@ -136,7 +141,9 @@ filter = keep_if
 def drop_if(condition):
     global _df
     n = len(_df)
+    for name in _df.columns: _drop(name)
     _df = _df.loc[~condition, :]
+    for name in _df.columns: _generate(name)
     print("dropped", len(_df), "of", n, "observations")
 
 def keep(*variables):
