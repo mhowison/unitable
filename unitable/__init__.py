@@ -1,6 +1,7 @@
 # Re-exported imports
 import pandas as pd
 from numpy import nan, where
+from re import sub
 
 # Hidden imports
 import builtins as _builtins
@@ -64,10 +65,14 @@ def clear():
 
 # Input/Output
 
+def _sanitize_name(name):
+    return sub(r"[^A-Za-z0-9]", "_", name)
+
 def read_csv(filename, **kwargs):
     global _df
     for name in _df.columns: _drop(name)
     _df = pd.read_csv(filename, **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
@@ -75,6 +80,7 @@ def read_tsv(filename, **kwargs):
     global _df
     for name in _df.columns: _drop(name)
     _df = pd.read_csv(filename, sep="\t", **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
@@ -82,6 +88,7 @@ def read_fwf(filename, **kwargs):
     global _df
     for name in _df.columns: _drop(name)
     _df = pd.read_fwf(filename, **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
@@ -118,9 +125,8 @@ def drop(variable):
 def rename(variable, name):
     global _df
     if not variable.name == name:
-        _df[:, name] = variable
-        del _df[variable.name]
         _drop(variable.name)
+        _df.rename(columns={variable.name: name}, inplace=True)
         _generate(name)
 
 # Filtering
