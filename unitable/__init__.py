@@ -45,6 +45,14 @@ def _drop(name):
     else:
         raise ValueError("cannot drop variable '{}' because it is not currently loaded".format(name))
 
+def _get_name(obj):
+    if isinstance(obj, str) or isinstance(obj, bytes):
+        return str(obj)
+    elif hasattr(obj, "name"):
+        return obj.name
+    else:
+        raise ValueError("unknown variable '{}'".format(str(obj)))
+
 # DataFrame
 
 def input(values):
@@ -113,20 +121,23 @@ def generate(name, value):
 
 def replace(variable, value):
     global _df
-    _drop(variable.name)
-    _df.loc[:, variable.name] = value
-    _generate(variable.name)
+    name = _get_name(variable)
+    _drop(name)
+    _df.loc[:, name] = value
+    _generate(name)
 
 def drop(variable):
     global _df
-    del _df[variable.name]
-    _drop(variable.name)
+    name = _get_name(variable)
+    del _df[name]
+    _drop(name)
 
 def rename(variable, name):
     global _df
-    if not variable.name == name:
-        _drop(variable.name)
-        _df.rename(columns={variable.name: name}, inplace=True)
+    old_name = _get_name(variable)
+    if old_name != name:
+        _drop(old_name)
+        _df.rename(columns={old_name: name}, inplace=True)
         _generate(name)
 
 # Filtering
@@ -154,10 +165,11 @@ def drop_if(condition):
 
 def keep(*variables):
     global _df
-    kept = [variable.name for variable in variables]
-    unkept = [name for name in _df.columns if name not in frozenset(kept)]
+    kept = list(map(_get_name, variables))
+    kept_set = frozenset(kept)
+    for name in _df.columns:
+        if name not in kept_set: _drop(name)
     _df = _df[kept]
-    for name in unkept: _drop(name)
     print("kept", len(_df.columns), "variables", file=_logfile)
 
 ## Sorting by Values
@@ -165,7 +177,7 @@ def keep(*variables):
 def sort(*variables):
     global _df
     for name in _df.columns: _drop(name)
-    _df = _df.sort_values([variable.name for variable in variables])
+    _df = _df.sort_values(list(map(_get_name, variables)))
     for name in _df.columns: _generate(name)
 
 # String Functions
@@ -222,7 +234,7 @@ def dropna(**kwargs):
 # Aggregation
 
 def groupby(*variables):
-    return _df.groupby([variable.name for variable in variables])
+    return _df.groupby(list(map(_get_name, variables)))
 
 # Dimensions
 
