@@ -100,14 +100,22 @@ def read_fwf(filename, **kwargs):
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
+def read_excel(filename, **kwargs):
+    global _df
+    for name in _df.columns: _drop(name)
+    _df = pd.read_excel(filename, **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
+    for name in _df.columns: _generate(name)
+    print("read", len(_df.columns), "variables from", filename, file=_logfile)
+
 import_delimited = read_csv
 
 def write_csv(filename, index=False, **kwargs):
-    _df.to_csv(filename, float_format="%g", **kwargs)
+    _df.to_csv(filename, index=index, float_format="%g", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 def write_tsv(filename, index=False, **kwargs):
-    _df.to_csv(filename, float_format="%g", sep="\t", **kwargs)
+    _df.to_csv(filename, index=index, float_format="%g", sep="\t", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 export_delimited = write_csv
