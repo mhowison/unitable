@@ -159,7 +159,7 @@ def keep_if(condition):
     for name in _df.columns: _drop(name)
     _df = _df.loc[condition, :]
     for name in _df.columns: _generate(name)
-    print("kept", len(_df), "of", n, "observations")
+    print("kept", len(_df), "of", n, "observations", file=_logfile)
 
 filter = keep_if
 
@@ -169,7 +169,15 @@ def drop_if(condition):
     for name in _df.columns: _drop(name)
     _df = _df.loc[~condition, :]
     for name in _df.columns: _generate(name)
-    print("dropped", len(_df), "of", n, "observations")
+    print("kept", len(_df), "of", n, "observations", file=_logfile)
+
+def drop_duplicates(*args, **kwargs):
+    global _df
+    n = len(_df)
+    for name in _df.columns: _drop(name)
+    _df = _df.drop_duplicates(*args, **kwargs)
+    for name in _df.columns: _generate(name)
+    print("kept", len(_df), "of", n, "observations", file=_logfile)
 
 def keep(*variables):
     global _df
