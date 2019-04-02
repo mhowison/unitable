@@ -1,6 +1,7 @@
 # Re-exported imports
 import pandas as pd
-from numpy import nan
+from numpy import nan, where
+from re import sub
 
 # Hidden imports
 import builtins as _builtins
@@ -41,9 +42,16 @@ def _drop(name):
     _locals = _stack()[2][0].f_locals
     if name in _locals and name in _df.columns:
         _locals.pop(name)
-        del _df[name]
     else:
         raise ValueError("cannot drop variable '{}' because it is not currently loaded".format(name))
+
+def _get_name(obj):
+    if isinstance(obj, str) or isinstance(obj, bytes):
+        return str(obj)
+    elif hasattr(obj, "name"):
+        return obj.name
+    else:
+        raise ValueError("unknown variable '{}'".format(str(obj)))
 
 # DataFrame
 
@@ -65,10 +73,14 @@ def clear():
 
 # Input/Output
 
+def _sanitize_name(name):
+    return sub(r"[^A-Za-z0-9]", "_", name)
+
 def read_csv(filename, **kwargs):
     global _df
     for name in _df.columns: _drop(name)
     _df = pd.read_csv(filename, **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
@@ -76,6 +88,7 @@ def read_tsv(filename, **kwargs):
     global _df
     for name in _df.columns: _drop(name)
     _df = pd.read_csv(filename, sep="\t", **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
@@ -83,17 +96,26 @@ def read_fwf(filename, **kwargs):
     global _df
     for name in _df.columns: _drop(name)
     _df = pd.read_fwf(filename, **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
+    for name in _df.columns: _generate(name)
+    print("read", len(_df.columns), "variables from", filename, file=_logfile)
+
+def read_excel(filename, **kwargs):
+    global _df
+    for name in _df.columns: _drop(name)
+    _df = pd.read_excel(filename, **kwargs)
+    _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
     print("read", len(_df.columns), "variables from", filename, file=_logfile)
 
 import_delimited = read_csv
 
 def write_csv(filename, index=False, **kwargs):
-    _df.to_csv(filename, **kwargs)
+    _df.to_csv(filename, index=index, float_format="%g", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 def write_tsv(filename, index=False, **kwargs):
-    _df.to_csv(filename, delimiter="\t", **kwargs)
+    _df.to_csv(filename, index=index, float_format="%g", sep="\t", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 export_delimited = write_csv
@@ -107,17 +129,23 @@ def generate(name, value):
 
 def replace(variable, value):
     global _df
-    _df.loc[:, variable.name] = value
+    name = _get_name(variable)
+    _drop(name)
+    _df.loc[:, name] = value
+    _generate(name)
 
 def drop(variable):
     global _df
-    _drop(variable.name)
+    name = _get_name(variable)
+    _drop(name)
+    del _df[name]
 
 def rename(variable, name):
     global _df
-    if not variable.name == name:
-        _df[name, :] = variable
-        _drop(variable.name)
+    old_name = _get_name(variable)
+    if old_name != name:
+        _drop(old_name)
+        _df.rename(columns={old_name: name}, inplace=True)
         _generate(name)
 
 # Filtering
@@ -125,12 +153,39 @@ def rename(variable, name):
 def list_if(condition):
     return _df[condition]
 
+def keep_if(condition):
+    global _df
+    n = len(_df)
+    for name in _df.columns: _drop(name)
+    _df = _df.loc[condition, :]
+    for name in _df.columns: _generate(name)
+    print("kept", len(_df), "of", n, "observations", file=_logfile)
+
+filter = keep_if
+
+def drop_if(condition):
+    global _df
+    n = len(_df)
+    for name in _df.columns: _drop(name)
+    _df = _df.loc[~condition, :]
+    for name in _df.columns: _generate(name)
+    print("kept", len(_df), "of", n, "observations", file=_logfile)
+
+def drop_duplicates(*args, **kwargs):
+    global _df
+    n = len(_df)
+    for name in _df.columns: _drop(name)
+    _df = _df.drop_duplicates(*args, **kwargs)
+    for name in _df.columns: _generate(name)
+    print("kept", len(_df), "of", n, "observations", file=_logfile)
+
 def keep(*variables):
     global _df
-    kept = [variable.name for variable in variables]
-    unkept = [name for name in _df.columns if name not in frozenset(kept)]
+    kept = list(map(_get_name, variables))
+    kept_set = frozenset(kept)
+    for name in _df.columns:
+        if name not in kept_set: _drop(name)
     _df = _df[kept]
-    for name in unkept: _drop(name)
     print("kept", len(_df.columns), "variables", file=_logfile)
 
 ## Sorting by Values
@@ -138,7 +193,7 @@ def keep(*variables):
 def sort(*variables):
     global _df
     for name in _df.columns: _drop(name)
-    _df = _df.sort_values([variable.name for variable in variables])
+    _df = _df.sort_values(list(map(_get_name, variables)))
     for name in _df.columns: _generate(name)
 
 # String Functions
@@ -182,6 +237,12 @@ def merge(df, **kwargs):
     _df = _df.merge(df, **kwargs)
     for name in _df.columns: _generate(name)
 
+def append(df, **kwargs):
+    global _df
+    for name in _df.columns: _drop(name)
+    _df = _df.append(df, ignore_index=True, **kwargs)
+    for name in _df.columns: _generate(name)
+
 # Missing Data
 
 def dropna(**kwargs):
@@ -195,7 +256,7 @@ def dropna(**kwargs):
 # Aggregation
 
 def groupby(*variables):
-    return _df.groupby([variable.name for variable in variables])
+    return _df.groupby(list(map(_get_name, variables)))
 
 # Dimensions
 
