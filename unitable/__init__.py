@@ -237,6 +237,12 @@ def merge(df, **kwargs):
     _df = _df.merge(df, **kwargs)
     for name in _df.columns: _generate(name)
 
+def append(df, **kwargs):
+    global _df
+    for name in _df.columns: _drop(name)
+    _df = _df.append(df, ignore_index=True, **kwargs)
+    for name in _df.columns: _generate(name)
+
 # Missing Data
 
 def dropna(**kwargs):
