@@ -6,7 +6,7 @@ def read(filename):
 
 setup(
     name="unitable",
-    version="0.0.1",
+    version="0.0.2",
     author="Mark Howison",
     author_email="mark@howison.org",
     url="https://github.com/mhowison/unitable",
