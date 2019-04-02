@@ -137,8 +137,8 @@ def replace(variable, value):
 def drop(variable):
     global _df
     name = _get_name(variable)
-    del _df[name]
     _drop(name)
+    del _df[name]
 
 def rename(variable, name):
     global _df
