@@ -67,8 +67,8 @@ data_frame = input
 def clear():
     global _df
     unkept = _df.columns.tolist()
-    _df = pd.DataFrame()
     for name in unkept: _drop(name)
+    _df = pd.DataFrame()
     print("dropped", len(unkept), "variables", file=_logfile)
 
 # Input/Output
@@ -78,7 +78,7 @@ def _sanitize_name(name):
 
 def read_csv(filename, **kwargs):
     global _df
-    for name in _df.columns: _drop(name)
+    for name in _df.columns.tolist(): _drop(name)
     _df = pd.read_csv(filename, **kwargs)
     _df.columns = list(map(_sanitize_name, _df.columns))
     for name in _df.columns: _generate(name)
