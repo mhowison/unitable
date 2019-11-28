@@ -41,7 +41,7 @@ def _drop(name):
     global _df
     _locals = _stack()[2][0].f_locals
     if name in _locals and name in _df.columns:
-        _locals.pop(name)
+        del _locals[name]
     else:
         raise ValueError("cannot drop variable '{}' because it is not currently loaded".format(name))
 
@@ -70,6 +70,9 @@ def clear():
     for name in unkept: _drop(name)
     _df = pd.DataFrame()
     print("dropped", len(unkept), "variables", file=_logfile)
+
+def frame():
+    return _df
 
 # Input/Output
 
@@ -111,11 +114,11 @@ def read_excel(filename, **kwargs):
 import_delimited = read_csv
 
 def write_csv(filename, index=False, **kwargs):
-    _df.to_csv(filename, index=index, float_format="%g", **kwargs)
+    _df.to_csv(filename, index=index, **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 def write_tsv(filename, index=False, **kwargs):
-    _df.to_csv(filename, index=index, float_format="%g", sep="\t", **kwargs)
+    _df.to_csv(filename, index=index, sep="\t", **kwargs)
     print("wrote", len(_df.columns), "variables to", filename, file=_logfile)
 
 export_delimited = write_csv
