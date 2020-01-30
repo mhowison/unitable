@@ -14,6 +14,8 @@ __version__ = _get_distribution("unitable").version
 
 # Global data frame
 _df = pd.DataFrame()
+_df_stack = []
+_df_store = {}
 
 # Utility functions for manipulating caller's locals
 
@@ -53,6 +55,12 @@ def _get_name(obj):
     else:
         raise ValueError("unknown variable '{}'".format(str(obj)))
 
+def _sanitize_name(name):
+    sname = sub(r"[^A-Za-z0-9]", "_", name)
+    if sname != name:
+        print("sanitizing variable name '{}' to '{}'".format(name, sname), file=_logfile)
+    return sname
+
 # DataFrame
 
 def input(values):
@@ -74,10 +82,33 @@ def clear():
 def frame():
     return _df
 
-# Input/Output
+def preserve(tag=None):
+    global _df, _df_stack, _df_store
+    unkept = _df.columns.tolist()
+    if tag is not None:
+        _df_store[tag] = _df
+    else:
+        _df_stack.append(_df)
+    for name in unkept: _drop(name)
+    _df = pd.DataFrame()
+    print("preserved", len(unkept), "variables", file=_logfile)
 
-def _sanitize_name(name):
-    return sub(r"[^A-Za-z0-9]", "_", name)
+def restore(tag=None):
+    global _df, _df_stack, _df_store
+    for name in _df.columns.tolist(): _drop(name)
+    if tag is not None:
+        if tag not in _df_store:
+            raise ValueError("no preserved frame with name '{}'".format(tag))
+        _df = _df_store.pop(tag)
+    else:
+        if len(_df_stack) < 1:
+            raise ValueError("no preserved frames available to restore")
+        _df = _df_stack.pop()
+    _df.columns = list(map(_sanitize_name, _df.columns))
+    for name in _df.columns: _generate(name)
+    print("restored", len(_df.columns), "variables", file=_logfile)
+
+# Input/Output
 
 def read_csv(filename, **kwargs):
     global _df
